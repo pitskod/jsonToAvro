@@ -1,0 +1,4 @@
+jsonToAvro/WholeFileRecordReader.class
+jsonToAvro/WholeFileInputFormat.class
+jsonToAvro/jsonToAvroMapper.class
+jsonToAvro/jsonToAvro.class

@@ -1,0 +1,4 @@
+/home/cloudera/workspace/jsonToAvro/src/main/java/jsonToAvro/jsonToAvroMapper.java
+/home/cloudera/workspace/jsonToAvro/src/main/java/jsonToAvro/jsonToAvro.java
+/home/cloudera/workspace/jsonToAvro/src/main/java/jsonToAvro/WholeFileInputFormat.java
+/home/cloudera/workspace/jsonToAvro/src/main/java/jsonToAvro/WholeFileRecordReader.java
