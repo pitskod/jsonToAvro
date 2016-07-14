@@ -19,22 +19,20 @@ public class jsonToAvroMapperTest {
 
 	jsonToAvroMapper jstoav = new jsonToAvroMapper();
 
-	String pathToShortJson = "/home/cloudera/Json/shortJsonToAvro/shortJson/uid=1.json";
-	String pathToShortAvro = "/home/cloudera/Json/shortJsonToAvro/output1/uid=1.avro";
-	String pathToShortSchema = "/home/cloudera/Json/shortJsonToAvro/shortSchema.avsc";
-	String[] allKeys = { "uid", "first_name", "last_name", "sex", "bdate" };
+	String pathToJsonSchema = "src/test/resources/input/shortSchema.avsc";
+	String pathToShortJson = "src/test/resources/output/shortJsonFiles/uid=1.json";
+	String pathToAvro = "src/test/resources/output/avroFiles/all.avro";
 
 	@SuppressWarnings("resource")
 	@Test
 	public void checkSchema() {
-		File avroFile = new File(pathToShortAvro);
+		File avroFile = new File(pathToAvro);
 		DatumReader<GenericRecord> reader = new GenericDatumReader<GenericRecord>();
 		try {
 			DataFileReader<GenericRecord> dataFileReader = new DataFileReader<GenericRecord>(
 					avroFile, reader);
-			// System.out.println(dataFileReader.getSchema());
 			assertEquals((Object) jstoav.schemaFromString(jstoav
-					.readFromFile(pathToShortSchema)),
+					.readFromFile(pathToJsonSchema)),
 					(Object) dataFileReader.getSchema());
 
 		} catch (IOException e) {
@@ -46,7 +44,7 @@ public class jsonToAvroMapperTest {
 
 	@Test
 	public void checkJsonObjects() {
-		File avroFile = new File(pathToShortAvro);
+		File avroFile = new File(pathToAvro);
 		DatumReader<GenericRecord> reader = new GenericDatumReader<GenericRecord>();
 		DataFileReader<GenericRecord> dataFileReader;
 		JSONObject rightJsonObject = jstoav.stringToJsonObject(jstoav

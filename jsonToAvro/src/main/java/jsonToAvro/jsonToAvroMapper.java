@@ -1,22 +1,19 @@
 package jsonToAvro;
 
 import java.io.BufferedReader;
-import java.io.File;
+import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 
 import org.apache.avro.Schema;
-import org.apache.avro.file.DataFileWriter;
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericDatumWriter;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.DatumWriter;
+import org.apache.avro.Schema.Field;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.hadoop.conf.Configuration;
-
-import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -26,94 +23,78 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.apache.hadoop.mapreduce.InputSplit;
 
+import java.util.List;
+
 public class jsonToAvroMapper extends
-		Mapper<NullWritable, Text, Text, IntWritable> {
+		Mapper<NullWritable, Text, LongWritable, Text> {
+
 	String pathToJsonSchema;
 	String pathToShortJson;
 	String pathToAvro;
 	String[] keysForShortJson;
 	protected String fileName;
 
-	@Override
 	protected void map(NullWritable key, Text value, Context context)
 			throws IOException, InterruptedException {
 
-		configure(context);
+		setup(context);
 		JSONObject jsonObj = stringToJsonObject(value.toString());
 		JSONObject shortJsonObject = fillAllFields(jsonObj);
-		File avroFolder = new File(pathToAvro);
-		avroFolder.mkdir();
-		jsonToAvro(pathToJsonSchema, shortJsonObject.toString(),
-				getCurrentFileName(context));
-		super.map(key, value, context);
+		// super.map(key, value, context);
+		context.write(new LongWritable(1),
+				new Text(shortJsonObject.toJSONString()));
 
 	}
 
 	private String getCurrentFileName(Context context) {
 		FileSplit fileSplit;
 		InputSplit is = context.getInputSplit();
-
 		fileSplit = (FileSplit) is;
-		String fileName = fileSplit.getPath().getName().toString();
-
-		return FilenameUtils.removeExtension(fileName);
+		fileName = fileSplit.getPath().getName().toString();
+		fileName = FilenameUtils.removeExtension(fileName);
+		return fileName;
 	}
 
-	public void configure(Context context) {
+	public void setup(Context context) {
 		Configuration conf = context.getConfiguration();
 		pathToJsonSchema = conf.get("pathToJsonSchema");
 		pathToShortJson = conf.get("pathToShortJson");
 		pathToAvro = conf.get("pathToAvro");
-		keysForShortJson = stringToArray(conf.get("keysForShortJson"));
-		// fileName = context.getConfiguration().get("map.input.file");
-		// System.out.println(fileName);
+		keysForShortJson = getFieldsFromSchema(pathToJsonSchema);
+		fileName = getCurrentFileName(context);
 
 	}
 
-	private String[] stringToArray(String string) {
-		String delims = ",";
-		String[] element = string.split(delims);
-		return element;
-	}
-
-	private void jsonToAvro(String pathToSchema, String json, String avro) {
-
+	private String[] getFieldsFromSchema(String pathToSchema) {
 		Schema schema = schemaFromString(readFromFile(pathToSchema));
-
-		GenericRecord datum = new GenericData.Record(schema);
-		JSONObject jsonObj = stringToJsonObject(json);
-		for (int i = 0; i < keysForShortJson.length; ++i) {
-			datum.put(i, jsonObj.get(keysForShortJson[i]));
+		List<Field> listFields = schema.getFields();
+		int listFieldsSize = listFields.size();
+		String[] arrayFields = new String[listFieldsSize];
+		for (int i = 0; i < listFieldsSize; ++i) {
+			arrayFields[i] = listFields.get(i).name();
+			// System.out.println(listFields.get(i).name() +
+			// " "+listFields.get(i).);
 		}
-		File file = new File(pathToAvro + "/" + avro + ".avro");
-		DatumWriter<GenericRecord> writer = new GenericDatumWriter<GenericRecord>(
-				schema);
-		// Encoder encoder = EncoderFactory.get().binaryEncoder(out, null);
-		DataFileWriter<GenericRecord> dataFileWriter = new DataFileWriter<GenericRecord>(
-				writer);
-		try {
-			dataFileWriter.create(schema, file);
-			dataFileWriter.append(datum);
-			dataFileWriter.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
+		/*
+		 * for (Field oneField : listFields){
+		 * System.out.println(oneField.name()+ "!" +
+		 * oneField.toString().split(" :")[0]); }
+		 */
+		return arrayFields;
 	}
 
 	public Schema schemaFromString(String schemaStr) {
 		Schema.Parser parser = new Schema.Parser();
-		// System.out.println(getClass().getResourceAsStream("shortSchema.avsc").);
 		Schema schema = parser.parse(schemaStr);
 		return schema;
 	}
 
 	public String readFromFile(String pathToSchema) {
-		File f = new File(pathToSchema);
-		BufferedReader br;
+
 		try {
-			br = new BufferedReader(new FileReader(f));
+			FileSystem fs = FileSystem.get(new Configuration());
+			BufferedReader br = new BufferedReader(new InputStreamReader(
+					fs.open(new Path(pathToSchema))));
 			String schemaStr = "";
 			String line;
 			while ((line = br.readLine()) != null)
@@ -136,7 +117,7 @@ public class jsonToAvroMapper extends
 
 		JSONObject shortJsonObject = new JSONObject();
 		for (int i = 0; i < keysForShortJson.length; ++i) {
-			String currentKey = keysForShortJson[i];
+			String currentKey = keysForShortJson[i].toString();
 			if (longJsonObj.containsKey(currentKey)) {
 				shortJsonObject.put(currentKey, longJsonObj.get(currentKey));
 			} else {
@@ -149,22 +130,23 @@ public class jsonToAvroMapper extends
 	}
 
 	private void writeToFolder(JSONObject shortJsonObject, String outputFile) {
-		File output;
-		if (outputFile.startsWith("/"))
-			output = new File(outputFile);
-		else
-			output = new File(System.getProperty("user.dir") + "/" + outputFile);
-		if (!output.exists())
-			output.mkdir();
-		FileWriter file;
+
 		try {
-			file = new FileWriter(outputFile + "/uid="
+			FileSystem fs = FileSystem.get(new Configuration());
+			Path outputPath = new Path(outputFile + "/uid="
 					+ shortJsonObject.get("uid") + ".json");
-			file.write(shortJsonObject.toJSONString());
-			file.close();
-		} catch (IOException e) {
+			BufferedWriter br = new BufferedWriter(new OutputStreamWriter(
+					fs.create(outputPath)));
+			/*
+			 * if (outputFile.startsWith("/")) output = new File(outputFile);
+			 * else output = new File(System.getProperty("user.dir") + "/" +
+			 * outputFile); if (!output.exists()) output.mkdir();
+			 */
+			br.write(shortJsonObject.toJSONString());
+			br.close();
+		} catch (IOException e1) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			e1.printStackTrace();
 		}
 
 	}

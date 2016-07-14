@@ -1,0 +1,43 @@
+
+	{
+      
+	    "name" : "MyPerson",
+
+	    "type" : "record",
+
+	    "fields" : [ {
+
+	      "name" : "uid",
+
+	      "type" : "long"
+
+	    }, {
+
+	      "name" : "first_name",
+
+	      "type" : "string"
+
+	    }, {
+
+	      "name" : "last_name",
+
+	      "type" : "string"
+
+	    }, {
+
+	      "name" : "sex",
+
+	      "type" : "int"
+
+	    }, {
+
+	      "name" : "bdate",
+
+	      "type" : "string"
+           
+
+
+	    } ]
+
+	}
+

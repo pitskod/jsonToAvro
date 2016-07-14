@@ -14,7 +14,7 @@ import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 
-class WholeFileRecordReader extends  RecordReader<NullWritable, Text> {
+class WholeFileRecordReader extends RecordReader<NullWritable, Text> {
 	private FileSplit fileSplit;
 	private Configuration conf;
 	private Text value = new Text();
@@ -47,11 +47,8 @@ class WholeFileRecordReader extends  RecordReader<NullWritable, Text> {
 		return false;
 	}
 
-
-
 	@Override
-	public Text getCurrentValue() throws IOException,
-			InterruptedException {
+	public Text getCurrentValue() throws IOException, InterruptedException {
 		return value;
 	}
 
